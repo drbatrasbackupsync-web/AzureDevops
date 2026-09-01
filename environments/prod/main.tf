@@ -1,3 +1,5 @@
+data "azurerm_client_config" "current" {}
+
 module "resource_group" {
   source = "../../modules/azurerm_resource_group"
   rgs    = var.rgs
@@ -15,10 +17,36 @@ module "subnet" {
   subnets    = var.subnets
 }
 
+module "network_security_group" {
+  depends_on = [module.resource_group]
+  source     = "../../modules/azurerm_network_security_group"
+  nsgs       = var.nsgs
+}
+
 module "public_ip" {
   depends_on = [module.resource_group]
   source     = "../../modules/azurerm_public_ip"
   public_ips = var.public_ips
+}
+
+module "network_interface" {
+  depends_on = [module.subnet]
+  source     = "../../modules/azurerm_network_interface"
+  nics = {
+    for k, v in var.nics : k => merge(v, {
+      subnet_id = module.subnet.subnets[v.subnet_key].id
+    })
+  }
+}
+
+module "key_vault" {
+  depends_on = [module.resource_group]
+  source     = "../../modules/azurerm_key_vault"
+  key_vaults = {
+    for k, v in var.key_vaults : k => merge(v, {
+      tenant_id = data.azurerm_client_config.current.tenant_id
+    })
+  }
 }
 
 module "storage_account" {

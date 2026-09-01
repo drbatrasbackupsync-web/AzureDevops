@@ -10,8 +10,23 @@ variable "subnets" {
   type = map(any)
 }
 
+variable "nsgs" {
+  type    = map(any)
+  default = {}
+}
+
 variable "public_ips" {
   type = map(any)
+}
+
+variable "nics" {
+  type    = map(any)
+  default = {}
+}
+
+variable "key_vaults" {
+  type    = map(any)
+  default = {}
 }
 
 variable "storage_accounts" {

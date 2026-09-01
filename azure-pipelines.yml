@@ -1,0 +1,153 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: azureServiceConnection
+    value: 'azure-service-connection' # Azure DevOps Service Connection name
+  - name: terraformVersion
+    value: '1.15.8'
+
+stages:
+  - stage: Validate
+    displayName: 'Validate & Security Scanning'
+    jobs:
+      - job: ValidateTerraform
+        displayName: 'Terraform Format, Validate & Security Scan'
+        steps:
+          - task: HashiCorpInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - script: |
+              echo "==> Running Gitleaks Security Scan for Secrets..."
+              curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz | tar -xz
+              ./gitleaks detect --source . --verbose || true
+
+              echo "==> Running TFLint Static Security Analysis..."
+              curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+              tflint --init
+              tflint || true
+
+              echo "==> Checking Preprod Infrastructure..."
+              cd environments/preprod
+              terraform init -backend=false
+              terraform fmt -check
+              terraform validate
+
+              echo "==> Checking Prod Infrastructure..."
+              cd ../prod
+              terraform init -backend=false
+              terraform fmt -check
+              terraform validate
+            displayName: 'Validate Preprod & Prod with Security Checks'
+
+  - stage: Preprod_Plan
+    displayName: 'Preprod - Plan'
+    dependsOn: Validate
+    jobs:
+      - job: PlanPreprod
+        displayName: 'Terraform Plan Preprod'
+        steps:
+          - task: HashiCorpInstaller@1
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init & Plan (Preprod)'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: 'environments/preprod'
+              inlineScript: |
+                terraform init
+                terraform plan -out=preprod.tfplan
+
+  - stage: Preprod_Apply
+    displayName: 'Preprod - Apply'
+    dependsOn: Preprod_Plan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: ApplyPreprod
+        displayName: 'Deploy to Preprod'
+        environment: 'preprod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: HashiCorpInstaller@1
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Init & Apply (Preprod)'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    workingDirectory: 'environments/preprod'
+                    inlineScript: |
+                      terraform init
+                      terraform apply -auto-approve
+
+  - stage: Prod_Plan
+    displayName: 'Prod - Plan'
+    dependsOn: Preprod_Apply
+    jobs:
+      - job: PlanProd
+        displayName: 'Terraform Plan Prod'
+        steps:
+          - task: HashiCorpInstaller@1
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Init & Plan (Prod)'
+            inputs:
+              azureSubscription: '$(azureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: 'environments/prod'
+              inlineScript: |
+                terraform init
+                terraform plan -out=prod.tfplan
+
+  - stage: Prod_Apply
+    displayName: 'Prod - Apply'
+    dependsOn: Prod_Plan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: ApplyProd
+        displayName: 'Deploy to Prod'
+        environment: 'prod'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: HashiCorpInstaller@1
+                  inputs:
+                    terraformVersion: '$(terraformVersion)'
+
+                - task: AzureCLI@2
+                  displayName: 'Terraform Init & Apply (Prod)'
+                  inputs:
+                    azureSubscription: '$(azureServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    workingDirectory: 'environments/prod'
+                    inlineScript: |
+                      terraform init
+                      terraform apply -auto-approve

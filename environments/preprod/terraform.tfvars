@@ -24,6 +24,44 @@ subnets = {
     resource_group_name  = "rg-chor-dev"
     virtual_network_name = "vnet-chor-dev"
     address_prefixes     = ["10.0.1.0/24"]
+  },
+  snet2 = {
+    name                 = "backend-subnet"
+    resource_group_name  = "rg-chor-dev"
+    virtual_network_name = "vnet-chor-dev"
+    address_prefixes     = ["10.0.2.0/24"]
+  }
+}
+
+nsgs = {
+  nsg1 = {
+    name                = "nsg-agw-preprod"
+    resource_group_name = "rg-chor-dev"
+    location            = "centralindia"
+    security_rules = [
+      {
+        name                       = "Allow-HTTP"
+        priority                   = 100
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "80"
+        source_address_prefix      = "*"
+        destination_address_prefix = "*"
+      },
+      {
+        name                       = "Allow-HTTPS"
+        priority                   = 110
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_port_range          = "*"
+        destination_port_range     = "443"
+        source_address_prefix      = "*"
+        destination_address_prefix = "*"
+      }
+    ]
   }
 }
 
@@ -34,6 +72,32 @@ public_ips = {
     location            = "centralindia"
     allocation_method   = "Static"
     sku                 = "Standard"
+    tags = {
+      environment = "preprod"
+    }
+  }
+}
+
+nics = {
+  nic1 = {
+    name                  = "nic-web-preprod-01"
+    resource_group_name   = "rg-chor-dev"
+    location              = "centralindia"
+    ip_configuration_name = "ipconfig1"
+    subnet_key            = "snet2"
+    tags = {
+      environment = "preprod"
+    }
+  }
+}
+
+key_vaults = {
+  kv1 = {
+    name                      = "kv-chor-preprod-01"
+    resource_group_name       = "rg-chor-dev"
+    location                  = "centralindia"
+    sku_name                  = "standard"
+    enable_rbac_authorization = true
     tags = {
       environment = "preprod"
     }
