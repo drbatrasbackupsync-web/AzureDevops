@@ -29,28 +29,32 @@ stages:
             inputs:
               terraformVersion: '$(terraformVersion)'
 
-          - script: |
-              echo "==> Running Gitleaks Security Scan for Secrets..."
-              curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz | tar -xz
-              ./gitleaks detect --source . --verbose || true
-
-              echo "==> Running TFLint Static Security Analysis..."
-              curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-              tflint --init
-              tflint || true
-
-              echo "==> Checking Preprod Infrastructure..."
-              cd environments/preprod
-              terraform init -backend=false
-              terraform fmt -check
-              terraform validate
-
-              echo "==> Checking Prod Infrastructure..."
-              cd ../prod
-              terraform init -backend=false
-              terraform fmt -check
-              terraform validate
+          - task: PowerShell@2
             displayName: 'Validate Preprod & Prod with Security Checks'
+            inputs:
+              targetType: 'inline'
+              pwsh: true
+              script: |
+                Write-Host "==> Running Gitleaks Security Scan for Secrets..."
+                curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.18.2/gitleaks_8.18.2_linux_x64.tar.gz | tar -xz
+                ./gitleaks detect --source . --verbose
+
+                Write-Host "==> Running TFLint Static Security Analysis..."
+                curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+                tflint --init
+                tflint
+
+                Write-Host "==> Checking Preprod Infrastructure..."
+                Set-Location environments/preprod
+                terraform init -backend=false
+                terraform fmt -check
+                terraform validate
+
+                Write-Host "==> Checking Prod Infrastructure..."
+                Set-Location ../prod
+                terraform init -backend=false
+                terraform fmt -check
+                terraform validate
 
   - stage: Preprod_Plan
     displayName: 'Preprod - Plan'
@@ -67,11 +71,13 @@ stages:
             displayName: 'Terraform Init & Plan (Preprod)'
             inputs:
               azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
+              scriptType: 'pscore'
               scriptLocation: 'inlineScript'
               workingDirectory: 'environments/preprod'
               inlineScript: |
+                Write-Host "==> Initializing Terraform (Preprod)..."
                 terraform init
+                Write-Host "==> Planning Terraform Infrastructure (Preprod)..."
                 terraform plan -out=preprod.tfplan
 
   - stage: Preprod_Apply
@@ -95,11 +101,13 @@ stages:
                   displayName: 'Terraform Init & Apply (Preprod)'
                   inputs:
                     azureSubscription: '$(azureServiceConnection)'
-                    scriptType: 'bash'
+                    scriptType: 'pscore'
                     scriptLocation: 'inlineScript'
                     workingDirectory: 'environments/preprod'
                     inlineScript: |
+                      Write-Host "==> Initializing Terraform (Preprod)..."
                       terraform init
+                      Write-Host "==> Applying Terraform Infrastructure (Preprod)..."
                       terraform apply -auto-approve
 
   - stage: Prod_Plan
@@ -117,11 +125,13 @@ stages:
             displayName: 'Terraform Init & Plan (Prod)'
             inputs:
               azureSubscription: '$(azureServiceConnection)'
-              scriptType: 'bash'
+              scriptType: 'pscore'
               scriptLocation: 'inlineScript'
               workingDirectory: 'environments/prod'
               inlineScript: |
+                Write-Host "==> Initializing Terraform (Prod)..."
                 terraform init
+                Write-Host "==> Planning Terraform Infrastructure (Prod)..."
                 terraform plan -out=prod.tfplan
 
   - stage: Prod_Apply
@@ -145,9 +155,11 @@ stages:
                   displayName: 'Terraform Init & Apply (Prod)'
                   inputs:
                     azureSubscription: '$(azureServiceConnection)'
-                    scriptType: 'bash'
+                    scriptType: 'pscore'
                     scriptLocation: 'inlineScript'
                     workingDirectory: 'environments/prod'
                     inlineScript: |
+                      Write-Host "==> Initializing Terraform (Prod)..."
                       terraform init
+                      Write-Host "==> Applying Terraform Infrastructure (Prod)..."
                       terraform apply -auto-approve

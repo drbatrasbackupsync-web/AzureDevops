@@ -7,6 +7,6 @@ resource "azurerm_key_vault" "key_vaults" {
   sku_name                   = each.value.sku_name
   soft_delete_retention_days = each.value.soft_delete_retention_days
   purge_protection_enabled   = each.value.purge_protection_enabled
-  rbac_authorization_enabled = each.value.enable_rbac_authorization
+  rbac_authorization_enabled = try(each.value.rbac_authorization_enabled, try(each.value.enable_rbac_authorization, true))
   tags                       = each.value.tags
 }

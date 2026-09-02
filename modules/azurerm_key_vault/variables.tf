@@ -8,7 +8,7 @@ variable "key_vaults" {
     tenant_id                  = string
     soft_delete_retention_days = optional(number, 7)
     purge_protection_enabled   = optional(bool, false)
-    enable_rbac_authorization  = optional(bool, true)
+    rbac_authorization_enabled = optional(bool, true)
     tags                       = optional(map(string), {})
   }))
 }

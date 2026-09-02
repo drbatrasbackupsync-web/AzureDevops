@@ -89,11 +89,11 @@ nics = {
 
 key_vaults = {
   kv1 = {
-    name                      = "kv-chor-prod-01"
-    resource_group_name       = "rg-chor-prod"
-    location                  = "centralindia"
-    sku_name                  = "standard"
-    enable_rbac_authorization = true
+    name                       = "kv-chor-prod-01"
+    resource_group_name        = "rg-chor-prod"
+    location                   = "centralindia"
+    sku_name                   = "standard"
+    rbac_authorization_enabled = true
     tags = {
       environment = "prod"
     }
