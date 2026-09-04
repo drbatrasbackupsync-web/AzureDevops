@@ -46,13 +46,13 @@ stages:
 
                 Write-Host "==> Checking Preprod Infrastructure..."
                 Set-Location environments/preprod
-                terraform init -backend=false
+                terraform init -backend=false -reconfigure
                 terraform fmt -check
                 terraform validate
 
                 Write-Host "==> Checking Prod Infrastructure..."
                 Set-Location ../prod
-                terraform init -backend=false
+                terraform init -backend=false -reconfigure
                 terraform fmt -check
                 terraform validate
 
@@ -76,7 +76,7 @@ stages:
               workingDirectory: 'environments/preprod'
               inlineScript: |
                 Write-Host "==> Initializing Terraform (Preprod)..."
-                terraform init
+                terraform init -reconfigure
                 Write-Host "==> Planning Terraform Infrastructure (Preprod)..."
                 terraform plan -out=preprod.tfplan
 
@@ -106,7 +106,7 @@ stages:
                     workingDirectory: 'environments/preprod'
                     inlineScript: |
                       Write-Host "==> Initializing Terraform (Preprod)..."
-                      terraform init
+                      terraform init -reconfigure
                       Write-Host "==> Applying Terraform Infrastructure (Preprod)..."
                       terraform apply -auto-approve
 
@@ -130,7 +130,7 @@ stages:
               workingDirectory: 'environments/prod'
               inlineScript: |
                 Write-Host "==> Initializing Terraform (Prod)..."
-                terraform init
+                terraform init -reconfigure
                 Write-Host "==> Planning Terraform Infrastructure (Prod)..."
                 terraform plan -out=prod.tfplan
 
@@ -160,6 +160,6 @@ stages:
                     workingDirectory: 'environments/prod'
                     inlineScript: |
                       Write-Host "==> Initializing Terraform (Prod)..."
-                      terraform init
+                      terraform init -reconfigure
                       Write-Host "==> Applying Terraform Infrastructure (Prod)..."
                       terraform apply -auto-approve
